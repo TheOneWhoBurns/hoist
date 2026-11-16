@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#10291e"/><stop offset="1" stop-color="#0c1110"/></linearGradient><radialGradient id="glow"><stop stop-color="#a6f2b8" stop-opacity=".15"/><stop offset="1" stop-color="#a6f2b8" stop-opacity="0"/></radialGradient></defs>
+<rect width="1280" height="640" rx="28" fill="url(#bg)"/>
+<circle cx="1030" cy="220" r="360" fill="url(#glow)"/>
+<g fill="none" stroke="#a6f2b8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><rect x="76" y="69" width="58" height="41" rx="7"/><path d="M96 96l30-30m-20 0h20v20"/></g>
+<text x="155" y="107" fill="#f1f6f2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="44" font-weight="700">Hoist</text>
+<text x="76" y="227" fill="#a6f2b8" font-family="Arial,sans-serif" font-size="16" letter-spacing="4">SMALL APP. BIG SCREEN.</text>
+<g fill="#f1f6f2" font-family="-apple-system,BlinkMacSystemFont,Arial,sans-serif" font-size="72" font-weight="700"><text x="72" y="319">Your files.</text><text x="72" y="402">A bigger stage.</text></g>
+<text x="76" y="461" fill="#a5b5ac" font-family="Arial,sans-serif" font-size="23">Google Cast, right from your Mac’s menu bar.</text>
+<rect x="76" y="515" width="179" height="42" rx="21" fill="#a6f2b8"/><text x="102" y="542" fill="#14251b" font-family="Arial,sans-serif" font-size="15" font-weight="700">macOS · open source</text>
+<text x="279" y="542" fill="#82958a" font-family="Arial,sans-serif" font-size="15">DEVELOPMENT PREVIEW</text>
+<g transform="translate(809 160)"><rect width="344" height="244" rx="20" fill="#192b21" stroke="#476551" stroke-width="2"/><rect x="17" y="17" width="310" height="210" rx="10" fill="#0a130e"/><path d="M146 83l68 39-68 39z" fill="#a6f2b8"/><path d="M172 246v24m-54 0h108" fill="none" stroke="#476551" stroke-width="5" stroke-linecap="round"/><rect x="47" y="319" width="250" height="53" rx="14" fill="#1b3024" stroke="#476551"/><circle cx="75" cy="346" r="5" fill="#a6f2b8"/><text x="94" y="351" fill="#d1e1d6" font-family="Arial,sans-serif" font-size="15">Choose. Cast. Settle in.</text></g>
+</svg>
