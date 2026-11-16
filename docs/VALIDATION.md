@@ -32,3 +32,10 @@ Hoist now requires the Default Media Receiver for local files/direct links, and 
 - No playback commands were sent by these companion checks. The user’s ongoing YouTube video was left untouched.
 - The XPI is unsigned. Temporary installation works; permanent installation awaits Mozilla signing.
 - Native buttons and playback on the live YouTube, Twitch, Prime Video, Netflix and F1 TV sites are not yet verified. The adapter is explicitly experimental.
+
+## Discovery and popover fix, 0.2.1
+
+- The app’s Local Network permission was disabled while command-line discovery had permission. Enabling Hoist’s macOS permission restored discovery in the running app.
+- The popover now tracks SwiftUI preferred and intrinsic content size, sizes itself before opening, and opens after activation has settled. Opening an empty device list retries discovery.
+- A live `--show --check-layout` run after rebuilding reported the real receiver in the app model and `fitsScreen: true`, including after discovery updated the UI.
+- This verification sent no playback commands.

@@ -332,7 +332,7 @@ struct HoistView: View {
                     Button("Help & compatibility") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist#compatibility")!) }
                     Divider()
                     Button("Firefox companion…") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist/blob/main/extension/README.md")!) }
-                    Text("Hoist 0.2.0 · Development preview")
+                    Text("Hoist 0.2.1 · Development preview")
                 } label: { Image(systemName: "gearshape") }.menuStyle(.borderlessButton).frame(width: 24)
                 Text("Keep Hoist open while streaming files.").font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
@@ -400,16 +400,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggle)
         item.button?.toolTip = "Hoist · Send something to the big screen"
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: HoistView(model: model))
-        if CommandLine.arguments.contains("--preview") || CommandLine.arguments.contains("--show") { toggle() }
+        popover.behavior = CommandLine.arguments.contains("--check-layout") ? .applicationDefined : .transient
+        let host = NSHostingController(rootView: HoistView(model: model))
+        host.sizingOptions = [.preferredContentSize, .intrinsicContentSize]
+        popover.contentViewController = host
+        popover.contentSize = host.view.fittingSize
+        if CommandLine.arguments.contains("--preview") || CommandLine.arguments.contains("--show") {
+            DispatchQueue.main.async { self.toggle() }
+        }
+        if CommandLine.arguments.contains("--check-layout") {
+            let delay = CommandLine.arguments.contains("--preview") ? 0.5 : 8.0
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard let view = self.popover.contentViewController?.view, let window = view.window, let screen = window.screen else {
+                    print("Popover unavailable: shown=\(self.popover.isShown), size=\(self.popover.contentSize), anchor=\(String(describing: self.item.button?.window?.frame)), visible=\(String(describing: self.item.button?.window?.isVisible)), hidden=\(String(describing: self.item.button?.isHiddenOrHasHiddenAncestor)), bounds=\(String(describing: self.item.button?.bounds)), active=\(NSApp.isActive)")
+                    exit(1)
+                }
+                let content = window.convertToScreen(view.convert(view.bounds, to: nil))
+                let fits = screen.visibleFrame.insetBy(dx: -1, dy: -1).contains(content)
+                let report: [String: Any] = ["fitsScreen": fits, "content": NSStringFromRect(content), "screen": NSStringFromRect(screen.visibleFrame), "devices": self.model.devices.map(\.name)]
+                print(String(data: try! JSONSerialization.data(withJSONObject: report), encoding: .utf8)!)
+                exit(fits ? 0 : 1)
+            }
+        }
     }
 
     @objc func toggle() {
         guard let button = item.button else { return }
         if popover.isShown { popover.performClose(nil) } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            if model.devices.isEmpty && !model.busy { model.discover() }
+            if let view = popover.contentViewController?.view {
+                view.layoutSubtreeIfNeeded()
+                popover.contentSize = view.fittingSize
+            }
             NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            }
         }
     }
 

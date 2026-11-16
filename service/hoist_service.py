@@ -312,7 +312,7 @@ class Service:
     def handle(self, request):
         action = request.get("action")
         if action == "ping":
-            return {"version": "0.2.0", "protocol": 2}
+            return {"version": "0.2.1", "protocol": 2}
         if action in ("launch", "castMessage", "castEvents", "loadMedia", "endSession"):
             return self.browser_action(request)
         if action == "discover":
