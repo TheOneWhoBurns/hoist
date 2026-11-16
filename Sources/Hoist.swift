@@ -332,7 +332,7 @@ struct HoistView: View {
                     Button("Help & compatibility") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist#compatibility")!) }
                     Divider()
                     Button("Firefox companion…") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist/blob/main/extension/README.md")!) }
-                    Text("Hoist 0.2.1 · Development preview")
+                    Text("Hoist 0.2.2 · Development preview")
                 } label: { Image(systemName: "gearshape") }.menuStyle(.borderlessButton).frame(width: 24)
                 Text("Keep Hoist open while streaming files.").font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
@@ -359,6 +359,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        configureMenu()
         if CommandLine.arguments.contains("--diagnose") {
             let bridge = CastBridge()
             bridge.request(["action": "ping"]) { result in
@@ -400,12 +401,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggle)
         item.button?.toolTip = "Hoist · Send something to the big screen"
-        popover.behavior = CommandLine.arguments.contains("--check-layout") ? .applicationDefined : .transient
+        popover.behavior = CommandLine.arguments.contains("--check-layout") || CommandLine.arguments.contains("--ui-check") ? .applicationDefined : .transient
         let host = NSHostingController(rootView: HoistView(model: model))
         host.sizingOptions = [.preferredContentSize, .intrinsicContentSize]
         popover.contentViewController = host
         popover.contentSize = host.view.fittingSize
-        if CommandLine.arguments.contains("--preview") || CommandLine.arguments.contains("--show") {
+        if CommandLine.arguments.contains("--preview") || CommandLine.arguments.contains("--show") || CommandLine.arguments.contains("--ui-check") {
             DispatchQueue.main.async { self.toggle() }
         }
         if CommandLine.arguments.contains("--check-layout") {
@@ -422,6 +423,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 exit(fits ? 0 : 1)
             }
         }
+    }
+
+    private func configureMenu() {
+        let main = NSMenu()
+        let appItem = NSMenuItem()
+        let appMenu = NSMenu(title: "Hoist")
+        appMenu.addItem(withTitle: "Quit Hoist", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+        main.addItem(appItem)
+
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(.separator())
+        for (title, action, key) in [("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
+            editMenu.addItem(withTitle: title, action: Selector(action), keyEquivalent: key)
+        }
+        editItem.submenu = editMenu
+        main.addItem(editItem)
+        NSApp.mainMenu = main
     }
 
     @objc func toggle() {

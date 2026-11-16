@@ -39,3 +39,9 @@ Hoist now requires the Default Media Receiver for local files/direct links, and 
 - The popover now tracks SwiftUI preferred and intrinsic content size, sizes itself before opening, and opens after activation has settled. Opening an empty device list retries discovery.
 - A live `--show --check-layout` run after rebuilding reported the real receiver in the app model and `fitsScreen: true`, including after discovery updated the UI.
 - This verification sent no playback commands.
+
+## Keyboard editing fix, 0.2.2
+
+- Added the standard macOS Edit menu and responder-chain actions for paste, copy, cut, select all, undo and redo. The programmatically created accessory app previously had no Edit menu.
+- Live UI checks confirmed pasting a sample URL, Command-A replacement and Command-Z restoring the previous URL. No test URL was submitted or cast.
+- Redo is wired to Shift-Command-Z, but its final UI inspection timed out; it is not recorded as verified.
