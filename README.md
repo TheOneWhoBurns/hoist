@@ -4,6 +4,7 @@
   <a href="https://github.com/TheOneWhoBurns/hoist/releases">Download preview</a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#compatibility">Compatibility</a> ·
+  <a href="extension/README.md">Firefox companion</a> ·
   <a href="docs/ROADMAP.md">What’s next</a>
 </p>
 
@@ -20,6 +21,7 @@ Hoist sends video and audio from your Mac to a Google Cast screen. Choose a file
 - **Pick your screen.** Nearby Google Cast devices appear automatically; Hoist remembers your selection.
 - **Stay in control.** Pause, resume, stop, seek, and adjust volume from the same place.
 - **Send a link.** Direct media URLs and an experimental YouTube integration are included.
+- **Bring Firefox along.** An optional companion adds a toolbar action and an experimental native Cast API adapter, using the helper inside Hoist. [Install the companion](extension/README.md).
 - **One app to install.** The runtime and Cast helper are bundled. End users do not install Python, Homebrew, or a browser extension.
 
 <p align="center"><img src="docs/interface.png" alt="Hoist’s menu bar popover, shown with an illustrative Living room device" width="390"><br><sub>Actual app view rendered in preview mode. Device information is illustrative.</sub></p>
@@ -44,7 +46,8 @@ The first build targets **Apple Silicon and macOS 13+**. It has only been run on
 | Unencrypted HLS / DASH links | Experimental; requires compatible receiver, codecs and server configuration |
 | YouTube video links | Experimental; real-device playback verified |
 | Arbitrary website page URLs | Not supported |
-| Native Cast buttons in Firefox | Planned companion extension |
+| Firefox toolbar and native messaging | Implemented; transport and discovery tested in real Firefox |
+| Native Cast buttons in Firefox | Experimental API adapter; actual service compatibility not yet verified |
 | Twitch, Prime Video, Netflix, F1 TV integrations | Not implemented or claimed compatible |
 | AirPlay, DLNA, screen mirroring | Not implemented |
 
@@ -52,7 +55,7 @@ Streaming services have their own receiver apps, authentication and DRM requirem
 
 ## Built to stay local
 
-Hoist has no accounts, analytics, advertising, or cloud relay. Its Swift interface talks to the bundled helper through private process pipes, without a control server listening on your network.
+Hoist has no accounts, analytics, advertising, or cloud relay. Its Swift interface talks to the bundled helper through private process pipes. The companion reaches that same helper over a Unix socket restricted to your local account, without a control server listening on your network.
 
 For a local file, Hoist temporarily serves only that selected file on the network interface used to reach your Chromecast, at a randomly generated URL. It supports byte ranges for seeking. The endpoint is closed when you stop playback, replace the media, or quit. This is local HTTP: the random URL is a capability, not encrypted transport, so use a trusted network. Hoist does not share folders or enumerate your files.
 
@@ -78,12 +81,12 @@ Run the process-and-network system checks:
 dist/Hoist.app/Contents/MacOS/Hoist --diagnose
 ```
 
-These checks do not send playback commands to your TV. Real-receiver verification is documented separately.
+These checks do not send playback commands to your TV. Real-receiver verification is documented separately. The companion also has packaged native-messaging and actual Firefox system checks; see [its guide](extension/README.md#development-and-signing).
 
 ## Under the hood
 
 SwiftUI and AppKit provide the native popover. [PyChromecast](https://github.com/home-assistant-libs/pychromecast) handles discovery and receiver communication; [casttube](https://github.com/ur1katz/casttube) provides YouTube session control. PyInstaller bundles the helper and Python runtime into the app. Build dependencies are pinned in `requirements-build.txt`; third-party notices ship in the app’s Resources/Licenses directory.
 
-The next step is a Firefox companion that uses this same app. Follow the [roadmap](docs/ROADMAP.md) for its scope and compatibility gates.
+The Firefox companion is included as an unsigned development preview, with a temporary-installation workflow. Mozilla signing is required for permanent installation. Follow the [roadmap](docs/ROADMAP.md) for the remaining service compatibility work.
 
 MIT license for Hoist’s code. Dependencies retain their own licenses. Hoist is an independent project and is not affiliated with Google or any streaming service.

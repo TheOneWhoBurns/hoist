@@ -7,14 +7,30 @@ import socket
 import sys
 import threading
 import time
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import pychromecast
 from pychromecast.controllers.youtube import YouTubeController
+from pychromecast.controllers import BaseController
+try:
+    from .native_bridge import NativeServer, native_main
+except ImportError:
+    from native_bridge import NativeServer, native_main
 
 logging.basicConfig(stream=sys.stderr, level=logging.ERROR)
+
+
+class NamespaceRelay(BaseController):
+    def __init__(self, namespace, callback):
+        super().__init__(namespace)
+        self.callback = callback
+
+    def receive_message(self, message, data):
+        self.callback(self.namespace, data)
+        return True
 
 
 class MediaShare:
@@ -107,6 +123,83 @@ class Service:
         self.browser = None
         self.current = None
         self.share = None
+        self.relays = []
+        self.relay_cast = None
+        self.events = deque(maxlen=100)
+        self.event_sequence = 0
+        self.event_lock = threading.Lock()
+
+    def record_event(self, namespace, data):
+        with self.event_lock:
+            self.event_sequence += 1
+            self.events.append({"sequence": self.event_sequence, "namespace": namespace, "data": data})
+
+    def session(self):
+        if not self.current or not self.current.status:
+            return None
+        status = self.current.status
+        return {"sessionId": status.session_id, "appId": status.app_id, "displayName": status.display_name,
+                "receiver": {"label": str(self.current.uuid), "friendlyName": self.current.name,
+                             "volume": {"level": status.volume_level, "muted": status.volume_muted}},
+                "namespaces": [{"name": name} for name in status.namespaces], "status": "connected"}
+
+    def browser_action(self, request):
+        action = request["action"]
+        if action == "launch":
+            app_id = request.get("appId", "CC1AD845")
+            if not isinstance(app_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{4,64}", app_id):
+                raise ValueError("Invalid Cast application ID.")
+            cast = self.select(request.get("device"))
+            for relay in self.relays:
+                self.relay_cast.unregister_handler(relay)
+            self.relays.clear()
+            self.relay_cast = cast
+            with self.event_lock:
+                self.events.clear()
+            cast.socket_client.receiver_controller.launch_app(app_id)
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                if cast.status and cast.status.app_id == app_id and cast.status.session_id:
+                    break
+                time.sleep(0.1)
+            else:
+                raise RuntimeError("The requested receiver app did not start on your screen.")
+            for namespace in cast.status.namespaces:
+                if namespace != "urn:x-cast:com.google.cast.media":
+                    relay = NamespaceRelay(namespace, self.record_event)
+                    cast.register_handler(relay)
+                    self.relays.append(relay)
+            self.clear_share()
+            return {"session": self.session(), "status": self.status()}
+        if not self.current or request.get("sessionId") != self.current.status.session_id:
+            raise ValueError("The Cast session has ended or changed. Connect again.")
+        if action == "castMessage":
+            namespace = request.get("namespace", "")
+            if namespace not in self.current.status.namespaces or not namespace.startswith("urn:x-cast:"):
+                raise ValueError("This receiver does not support that message namespace.")
+            data = request.get("data")
+            if not isinstance(data, dict):
+                raise ValueError("Cast messages must be JSON objects.")
+            self.current.socket_client.send_app_message(namespace, data, no_add_request_id=True)
+            return {}
+        if action == "castEvents":
+            with self.event_lock:
+                events = [event for event in self.events if event["sequence"] > request.get("after", 0)]
+            return {"events": events, "session": self.session(), "status": self.status()}
+        if action == "endSession":
+            self.current.quit_app()
+            self.clear_share()
+            return {}
+        if action == "loadMedia":
+            media = request.get("media", {})
+            url = media.get("contentId", "")
+            parsed = urlparse(url)
+            if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password:
+                raise ValueError("The media must have a direct HTTP(S) URL. Browser blob URLs cannot be cast.")
+            payload = {"type": "LOAD", "media": media, "autoplay": bool(request.get("autoplay", True)), "currentTime": max(0, float(request.get("currentTime") or 0))}
+            self.current.socket_client.send_app_message("urn:x-cast:com.google.cast.media", payload, inc_session_id=True)
+            return {"status": self.status()}
+        raise ValueError("Unknown browser command.")
 
     def discover(self):
         if self.browser:
@@ -212,12 +305,16 @@ class Service:
             "volume": self.current.status.volume_level if self.current.status else 0.5,
             "device": str(self.current.uuid), "deviceName": self.current.name,
             "idleReason": status.idle_reason or "",
+            "session": self.session(), "contentId": status.content_id or "", "contentType": status.content_type or "",
+            "mediaSessionId": status.media_session_id,
         }
 
     def handle(self, request):
         action = request.get("action")
         if action == "ping":
-            return {"version": "0.1.0", "protocol": 1}
+            return {"version": "0.2.0", "protocol": 2}
+        if action in ("launch", "castMessage", "castEvents", "loadMedia", "endSession"):
+            return self.browser_action(request)
         if action == "discover":
             return self.discover()
         if action == "status":
@@ -226,6 +323,8 @@ class Service:
             return self.play(request)
         if not self.current:
             raise ValueError("Cast something first.")
+        if request.get("sessionId") and request["sessionId"] != self.current.status.session_id:
+            raise ValueError("The Cast session changed. Connect again.")
         media = self.current.media_controller
         if action == "pause":
             media.pause()
@@ -238,6 +337,8 @@ class Service:
             media.seek(max(0, float(request["position"])))
         elif action == "volume":
             self.current.set_volume(max(0, min(1, float(request["value"]))))
+        elif action == "mute":
+            self.current.set_volume_muted(bool(request.get("value")))
         else:
             raise ValueError("Unknown command.")
         return self.status()
@@ -254,19 +355,31 @@ class Service:
 
 
 def main():
+    if "--native-host" in sys.argv:
+        native_main()
+        return
     service = Service()
+    lock = threading.Lock()
+    def dispatch(request):
+        with lock:
+            try:
+                return {"id": request.get("id"), "ok": True, "result": service.handle(request)}
+            except Exception as error:
+                return {"id": request.get("id"), "ok": False, "error": str(error) or type(error).__name__}
+    server = NativeServer(dispatch) if "--app-service" in sys.argv else None
     try:
         for line in sys.stdin:
             identifier = None
             try:
                 request = json.loads(line)
                 identifier = request.get("id")
-                result = service.handle(request)
-                reply = {"id": identifier, "ok": True, "result": result}
+                reply = dispatch(request)
             except Exception as error:
                 reply = {"id": identifier, "ok": False, "error": str(error) or type(error).__name__}
             print(json.dumps(reply, allow_nan=False), flush=True)
     finally:
+        if server:
+            server.close()
         service.close()
 
 

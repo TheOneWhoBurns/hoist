@@ -23,3 +23,12 @@ Hoist now requires the Default Media Receiver for local files/direct links, and 
 - Minimum supported macOS version and Intel architecture.
 - Developer ID signing and notarization; current app is ad-hoc signed only.
 - Full interactive UI check: native computer-use inspection timed out. The README image renders the actual SwiftUI view with illustrative device data.
+
+## Firefox companion, 0.2
+
+- Mozilla `web-ext lint`: zero errors and zero warnings.
+- Packaged native host: native-endian length framing, request IDs, private Unix socket permissions, shared app communication, rejection of browser local-file requests, invalid-session rejection and clean shutdown all pass system checks.
+- Actual Firefox 160 in a fresh temporary profile: extension load, MAIN-world sender API, isolated content bridge, native messaging, device discovery, basic framework context, Cast launcher and extension-owned picker cancellation all pass.
+- No playback commands were sent by these companion checks. The user’s ongoing YouTube video was left untouched.
+- The XPI is unsigned. Temporary installation works; permanent installation awaits Mozilla signing.
+- Native buttons and playback on the live YouTube, Twitch, Prime Video, Netflix and F1 TV sites are not yet verified. The adapter is explicitly experimental.

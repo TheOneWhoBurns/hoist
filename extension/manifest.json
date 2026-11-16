@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Hoist — Cast from Firefox",
+  "version": "0.2.0",
+  "description": "Send YouTube and direct media to Google Cast through Hoist, with an experimental native Cast API bridge.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "hoist@theonewhoburns.github.io",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {"required": ["none"]}
+    }
+  },
+  "permissions": ["activeTab", "storage", "nativeMessaging", "scripting"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": {"scripts": ["background.js"]},
+  "action": {"default_title": "Hoist to screen", "default_popup": "popup.html", "default_icon": "icon.svg"},
+  "icons": {"48": "icon.svg", "96": "icon.svg"}
+}

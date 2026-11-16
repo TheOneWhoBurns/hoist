@@ -1,0 +1,3 @@
+#!/bin/sh
+HOIST_RESOURCES=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$HOIST_RESOURCES/service/hoist-service" --native-host "$@"

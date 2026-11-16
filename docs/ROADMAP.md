@@ -13,11 +13,13 @@ Hoist stays a menu bar app. The desktop app owns device discovery, media serving
 
 ## Firefox companion
 
+The 0.2 preview now includes native messaging, a toolbar action, per-site injection, an extension-owned picker and an initial sender API adapter. These have been exercised in a real Firefox system check. Permanent-install signing and service-specific playback verification remain open.
+
 The intended experience is the native Cast button on compatible websites, with Hoist providing the device picker and session connection. This is a real Cast sender API compatibility project, not just a toolbar button that forwards URLs.
 
-1. Define a versioned native-messaging protocol and register the native host from the app. Accept messages only from the signed companion extension ID; do not expose a LAN control endpoint.
-2. Start with an explicit toolbar action for direct media and verified YouTube links, with per-site permission requests.
-3. Implement the required sender API lifecycle: availability, initialization, session requests, namespace messages, media status and disconnect handling. Browser identity detection may require service-specific work.
+1. Sign the companion for normal Firefox installation. Protocol version 2 and app-owned host registration are implemented; the host allows only the companion extension ID and exposes no LAN control endpoint.
+2. Verify toolbar playback end-to-end on each supported receiver. Direct media and YouTube forwarding are implemented, with optional per-site API injection.
+3. Expand the sender API adapter beyond its initial lifecycle, namespace relay and media controls. Browser identity detection and missing modern RemotePlayer/queue/track APIs require further work.
 4. Add native player integration one service at a time. For YouTube, Twitch, Prime Video, Netflix and F1 TV, record receiver IDs, authentication needs, supported API surface and a reproducible playback test. A Cast icon alone is not a pass.
 5. Publish an honest compatibility matrix and make unsupported sites fail clearly. Protected services may require cooperation from their provider; do not promise DRM playback or bypass it.
 

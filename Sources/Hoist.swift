@@ -9,6 +9,8 @@ struct Receiver: Identifiable, Decodable {
 }
 
 final class CastBridge {
+    let shared: Bool
+    init(shared: Bool = false) { self.shared = shared }
     private let queue = DispatchQueue(label: "app.hoist.bridge")
     private var process: Process?
     private var input: FileHandle?
@@ -54,6 +56,7 @@ final class CastBridge {
         guard let resource = Bundle.main.resourceURL else { throw CocoaError(.fileNoSuchFile) }
         let task = Process()
         task.executableURL = resource.appendingPathComponent("service/hoist-service")
+        if shared { task.arguments = ["--app-service"] }
         let incoming = Pipe()
         let outgoing = Pipe()
         task.standardInput = incoming
@@ -93,7 +96,7 @@ final class HoistModel: ObservableObject {
     @Published var volumeValue = 0.5
     private var polling = false
     private var timer: Timer?
-    let bridge = CastBridge()
+    let bridge = CastBridge(shared: true)
 
     init() {
         if CommandLine.arguments.contains("--preview") {
@@ -174,7 +177,7 @@ final class HoistModel: ObservableObject {
     }
 
     private func poll() {
-        guard !busy, !polling, hasSession else { return }
+        guard !busy, !polling else { return }
         polling = true
         bridge.request(["action": "status"]) { result in
             self.polling = false
@@ -185,6 +188,7 @@ final class HoistModel: ObservableObject {
 
     private func apply(_ status: [String: Any]) {
         state = status["state"] as? String ?? "IDLE"
+        if status["device"] != nil { hasSession = state != "IDLE" && state != "UNKNOWN" }
         if let name = status["title"] as? String, !name.isEmpty { title = name }
         playbackDevice = status["deviceName"] as? String ?? ""
         position = status["position"] as? Double ?? 0
@@ -327,7 +331,8 @@ struct HoistView: View {
                     Button("Local Network settings…") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork")!) }
                     Button("Help & compatibility") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist#compatibility")!) }
                     Divider()
-                    Text("Hoist 0.1.0 · Development preview")
+                    Button("Firefox companion…") { NSWorkspace.shared.open(URL(string: "https://github.com/TheOneWhoBurns/hoist/blob/main/extension/README.md")!) }
+                    Text("Hoist 0.2.0 · Development preview")
                 } label: { Image(systemName: "gearshape") }.menuStyle(.borderlessButton).frame(width: 24)
                 Text("Keep Hoist open while streaming files.").font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
@@ -384,6 +389,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             exit(0)
         }
+        do {
+            let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Mozilla/NativeMessagingHosts")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let manifest: [String: Any] = ["name": "io.github.theonewhoburns.hoist", "description": "Hoist Firefox companion", "path": Bundle.main.resourceURL!.appendingPathComponent("hoist-native").path, "type": "stdio", "allowed_extensions": ["hoist@theonewhoburns.github.io"]]
+            try JSONSerialization.data(withJSONObject: manifest, options: .prettyPrinted).write(to: directory.appendingPathComponent("io.github.theonewhoburns.hoist.json"), options: .atomic)
+        } catch { model.error = "Firefox setup failed: \(error.localizedDescription)" }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item.button?.image = NSImage(systemSymbolName: "tv", accessibilityDescription: "Hoist")
         item.button?.target = self
